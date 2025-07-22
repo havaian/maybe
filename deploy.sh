@@ -33,8 +33,8 @@ if [ -z "$SECRET_KEY_BASE" ]; then
     exit 1
 fi
 
-if [ -z "$POSTGRES_PASSWORD" ]; then
-    echo "❌ Error: POSTGRES_PASSWORD is not set in .env.production"
+if [ -z "$REDIS_PASSWORD" ]; then
+    echo "❌ Error: REDIS_PASSWORD is not set in .env.production"
     exit 1
 fi
 
@@ -59,12 +59,16 @@ $DOCKER_COMPOSE build --no-cache web
 if [ "$ROLLING_UPDATE" = true ]; then
     echo "🔄 Testing new build before switching..."
     
-    # Start database if not running
-    $DOCKER_COMPOSE up -d db
+    # Start database and redis if not running
+    $DOCKER_COMPOSE up -d db redis
     
     # Wait for database to be ready
     echo "⏳ Waiting for database to be ready..."
     timeout 60s bash -c 'until docker exec $(docker-compose ps -q db) pg_isready -U ${POSTGRES_USER:-postgres}; do sleep 2; done'
+    
+    # Wait for redis to be ready
+    echo "⏳ Waiting for redis to be ready..."
+    timeout 60s bash -c 'until docker exec $(docker-compose ps -q redis) redis-cli ping; do sleep 2; done'
     
     # Test the new build by running database migrations
     echo "🔍 Testing database migrations..."
@@ -87,6 +91,17 @@ timeout 120s bash -c '
         fi
         echo "⏳ Waiting for database..."
         sleep 5
+    done
+'
+
+timeout 60s bash -c '
+    while true; do
+        if docker exec $(docker-compose ps -q redis) redis-cli ping > /dev/null 2>&1; then
+            echo "✅ Redis is ready"
+            break
+        fi
+        echo "⏳ Waiting for redis..."
+        sleep 3
     done
 '
 
