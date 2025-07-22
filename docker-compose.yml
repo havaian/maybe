@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: maybe_production
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:2432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_COMMIT_SHA: ${CI_COMMIT_SHA:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:-2400}:3000"
+    environment:
+      # Rails Environment
+      RAILS_ENV: production
+      
+      # Database Configuration
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_DB: maybe_production
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      
+      # Required for production
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      SELF_HOSTED: true
+      
+      # Optional configurations
+      PORT: ${PORT:-2400}
+      APP_DOMAIN: ${APP_DOMAIN}
+      
+      # SMTP Configuration (optional)
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_TLS_ENABLED: ${SMTP_TLS_ENABLED:-true}
+      EMAIL_SENDER: ${EMAIL_SENDER}
+      
+      # API Keys (optional)
+      SYNTH_API_KEY: ${SYNTH_API_KEY}
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
+      PLAID_SECRET: ${PLAID_SECRET}
+      PLAID_ENV: ${PLAID_ENV:-sandbox}
+      PLAID_EU_CLIENT_ID: ${PLAID_EU_CLIENT_ID}
+      PLAID_EU_SECRET: ${PLAID_EU_SECRET}
+      
+      # Active Record Encryption (optional - will auto-generate if not provided)
+      ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY}
+      ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY}
+      ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT}
+      
+      # SSL Configuration
+      DISABLE_SSL: ${DISABLE_SSL:-false}
+      
+    volumes:
+      - app_storage:/rails/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for database to be ready...' &&
+        bundle exec rails db:prepare &&
+        echo 'Starting Rails server...' &&
+        bundle exec rails server -b 0.0.0.0 -p 3000
+      "
+
+volumes:
+  postgres_data:
+  app_storage:
