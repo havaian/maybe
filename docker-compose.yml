@@ -41,6 +41,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${PORT:-2400}:3000"
+    env_file:
+      - .env.production
     environment:
       # Rails Environment
       RAILS_ENV: production
@@ -49,35 +51,9 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       POSTGRES_DB: maybe_production
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       
       # Redis Configuration
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379/0
-      
-      # Required for production
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-      SELF_HOSTED: true
-      
-      # Optional configurations
-      PORT: ${PORT:-2400}
-      APP_DOMAIN: ${APP_DOMAIN}
-      
-      # SMTP Configuration (optional)
-      SMTP_ADDRESS: ${SMTP_ADDRESS}
-      SMTP_PORT: ${SMTP_PORT:-465}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_TLS_ENABLED: ${SMTP_TLS_ENABLED:-true}
-      EMAIL_SENDER: ${EMAIL_SENDER}
-      
-      # API Keys (optional)
-      SYNTH_API_KEY: ${SYNTH_API_KEY}
-      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
-      PLAID_SECRET: ${PLAID_SECRET}
-      PLAID_ENV: ${PLAID_ENV:-sandbox}
-      PLAID_EU_CLIENT_ID: ${PLAID_EU_CLIENT_ID}
-      PLAID_EU_SECRET: ${PLAID_EU_SECRET}
       
       # Active Record Encryption (optional - will auto-generate if not provided)
       ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY}
